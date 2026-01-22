@@ -33,3 +33,4 @@ Use numbers 1-9 to place your mark:
 
 - Python 3.6+
 - A terminal that supports ANSI colors
+
