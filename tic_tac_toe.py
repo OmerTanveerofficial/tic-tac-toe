@@ -359,6 +359,12 @@ def main():
             again = "n"
         if again != "y":
             print()
+total = scores["player"] + scores["computer"] + scores["draws"]
+            if total > 0:
+                print(f"\n  {Color.BOLD}{Color.WHITE}Final Stats:{Color.RESET}")
+                print(f"  {Color.GREEN}Wins: {scores["player"]}{Color.RESET} | {Color.RED}Losses: {scores["computer"]}{Color.RESET} | {Color.YELLOW}Draws: {scores["draws"]}{Color.RESET}")
+                win_rate = (scores["player"] / total) * 100
+                print(f"  {Color.CYAN}Win Rate: {win_rate:.0f}%{Color.RESET}\n")
             animated_text(f"  {Color.CYAN}{Color.BOLD}Thanks for playing! See you next time! 👋{Color.RESET}", 0.03)
             print()
             break
