@@ -88,6 +88,8 @@ def thinking_animation():
     print(f"\r{' ' * 40}\r", end="")
 
 
+# ─────────────────────── GAME LOGIC ──────────────────
+
 def check_winner(board, player):
     for combo in WIN_COMBOS:
         if all(board[i] == player for i in combo):
@@ -103,6 +105,71 @@ def get_available(board):
     return [i for i in range(9) if board[i] not in ("X", "O")]
 
 
+# ─────────────────────── AI (MINIMAX) ────────────────
+
+def minimax(board, depth, is_maximizing, computer, player, alpha, beta):
+    if check_winner(board, computer):
+        return 10 - depth
+    if check_winner(board, player):
+        return depth - 10
+    if is_draw(board):
+        return 0
+
+    if is_maximizing:
+        best = -math.inf
+        for i in get_available(board):
+            board[i] = computer
+            score = minimax(board, depth + 1, False, computer, player, alpha, beta)
+            board[i] = str(i + 1)
+            best = max(best, score)
+            alpha = max(alpha, score)
+            if beta <= alpha:
+                break
+        return best
+    else:
+        best = math.inf
+        for i in get_available(board):
+            board[i] = player
+            score = minimax(board, depth + 1, True, computer, player, alpha, beta)
+            board[i] = str(i + 1)
+            best = min(best, score)
+            beta = min(beta, score)
+            if beta <= alpha:
+                break
+        return best
+
+
+def get_computer_move_hard(board, computer, player):
+    best_score = -math.inf
+    best_move = None
+    for i in get_available(board):
+        board[i] = computer
+        score = minimax(board, 0, False, computer, player, -math.inf, math.inf)
+        board[i] = str(i + 1)
+        if score > best_score:
+            best_score = score
+            best_move = i
+    return best_move
+
+
+def get_computer_move_medium(board, computer, player):
+    if random.random() < 0.6:
+        return get_computer_move_hard(board, computer, player)
+    return random.choice(get_available(board))
+
+
+def get_computer_move_easy(board, computer, _player):
+    for i in get_available(board):
+        board[i] = computer
+        if check_winner(board, computer):
+            board[i] = str(i + 1)
+            return i
+        board[i] = str(i + 1)
+    return random.choice(get_available(board))
+
+
+# ─────────────────────── INPUT ───────────────────────
+
 def get_player_move(board):
     while True:
         try:
@@ -115,24 +182,39 @@ def get_player_move(board):
             print(f"  {Color.RED}✗ Please enter a number from 1 to 9.{Color.RESET}")
 
 
-def get_computer_move(board, computer, _player):
-    for i in get_available(board):
-        board[i] = computer
-        if check_winner(board, computer):
-            board[i] = str(i + 1)
-            return i
-        board[i] = str(i + 1)
-    return random.choice(get_available(board))
+def choose_difficulty():
+    print(f"\n  {Color.BOLD}{Color.WHITE}Select Difficulty:{Color.RESET}")
+    print(f"  {Color.GREEN}[1]{Color.RESET} Easy   {Color.DIM}— Computer makes random moves{Color.RESET}")
+    print(f"  {Color.YELLOW}[2]{Color.RESET} Medium {Color.DIM}— Computer plays smart sometimes{Color.RESET}")
+    print(f"  {Color.RED}[3]{Color.RESET} Hard   {Color.DIM}— Unbeatable AI (Minimax){Color.RESET}")
+    print()
+    while True:
+        try:
+            choice = input(f"  {Color.CYAN}➤ {Color.WHITE}Choose (1-3): {Color.RESET}")
+            if choice in ("1", "2", "3"):
+                return int(choice)
+            print(f"  {Color.RED}✗ Enter 1, 2, or 3.{Color.RESET}")
+        except EOFError:
+            return 2
 
 
 def play():
+    clear_screen()
+    print(BANNER)
+
+    difficulty = choose_difficulty()
+    ai_move_fn = {1: get_computer_move_easy, 2: get_computer_move_medium, 3: get_computer_move_hard}[difficulty]
+    diff_label = {1: f"{Color.GREEN}Easy", 2: f"{Color.YELLOW}Medium", 3: f"{Color.RED}Hard"}[difficulty]
+
     board = [str(i + 1) for i in range(9)]
     player, computer = "X", "O"
     current = "X"
 
     clear_screen()
     print(BANNER)
-    print(f"  {Color.BOLD}You: {Color.GREEN}X{Color.RESET}  │  {Color.BOLD}Computer: {Color.RED}O{Color.RESET}")
+    print(f"  {Color.BOLD}You: {Color.GREEN}X{Color.RESET}  │  "
+          f"{Color.BOLD}Computer: {Color.RED}O{Color.RESET}  │  "
+          f"{Color.BOLD}Difficulty: {diff_label}{Color.RESET}")
 
     while True:
         if current == player:
@@ -141,7 +223,7 @@ def play():
             board[move] = player
         else:
             thinking_animation()
-            move = get_computer_move(board, computer, player)
+            move = ai_move_fn(board, computer, player)
             board[move] = computer
             print(f"  {Color.YELLOW}● Computer placed O at position {move + 1}{Color.RESET}")
 
@@ -166,7 +248,9 @@ def play():
         if current == player:
             clear_screen()
             print(BANNER)
-            print(f"  {Color.BOLD}You: {Color.GREEN}X{Color.RESET}  │  {Color.BOLD}Computer: {Color.RED}O{Color.RESET}")
+            print(f"  {Color.BOLD}You: {Color.GREEN}X{Color.RESET}  │  "
+                  f"{Color.BOLD}Computer: {Color.RED}O{Color.RESET}  │  "
+                  f"{Color.BOLD}Difficulty: {diff_label}{Color.RESET}")
 
         current = "O" if current == "X" else "X"
 
