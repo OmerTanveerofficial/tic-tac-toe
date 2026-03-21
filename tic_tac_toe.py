@@ -313,9 +313,11 @@ def play(scores):
                 animated_text(f"  🎉 {label} ({current}) wins!", 0.04)
                 scores["player"] += 1
             elif is_player_turn:
+                print("\a")  # terminal bell
                 animated_text(f"  {Color.GREEN}{Color.BOLD}🎉 Congratulations! You win!{Color.RESET}", 0.04)
                 scores["player"] += 1
             else:
+                print("\a")  # terminal bell
                 animated_text(f"  {Color.RED}{Color.BOLD}💀 Computer wins! Better luck next time.{Color.RESET}", 0.04)
                 scores["computer"] += 1
             break
