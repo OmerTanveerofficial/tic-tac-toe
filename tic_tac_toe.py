@@ -268,6 +268,7 @@ def play(scores):
     board = [str(i + 1) for i in range(9)]
     current = "X"
     move_count = 0
+    move_history = []
 
     clear_screen()
     print(BANNER)
@@ -299,6 +300,7 @@ def play(scores):
             print(f"  {Color.YELLOW}● Computer placed {computer_marker} at position {move + 1}{Color.RESET}")
 
         move_count += 1
+        move_history.append((current if is_player_turn else computer_marker, move + 1))
 
         win_combo = check_winner(board, current if is_player_turn else computer_marker)
         if win_combo:
