@@ -22,6 +22,8 @@ class Color:
     BG_BLUE = "\033[44m"
 
 
+# ─────────────────────── DISPLAY ──────────────────────
+
 BANNER = f"""
 {Color.CYAN}{Color.BOLD}
   ╔════════════════════════════════════════╗
@@ -67,6 +69,15 @@ def print_board(board, winning_cells=None):
             print(f"  {Color.CYAN}├───┼───┼───┤{Color.RESET}")
     print(f"  {Color.CYAN}└───┴───┴───┘{Color.RESET}")
     print()
+
+
+def print_scoreboard(scores):
+    p = scores["player"]
+    c = scores["computer"]
+    d = scores["draws"]
+    print(f"  {Color.BOLD}{'─' * 36}{Color.RESET}")
+    print(f"  {Color.GREEN}  Player: {p}{Color.RESET}  │  {Color.RED}Computer: {c}{Color.RESET}  │  {Color.YELLOW}Draws: {d}{Color.RESET}")
+    print(f"  {Color.BOLD}{'─' * 36}{Color.RESET}")
 
 
 def animated_text(text, delay=0.03):
@@ -153,12 +164,14 @@ def get_computer_move_hard(board, computer, player):
 
 
 def get_computer_move_medium(board, computer, player):
+    # 60% chance of playing optimally, 40% random
     if random.random() < 0.6:
         return get_computer_move_hard(board, computer, player)
     return random.choice(get_available(board))
 
 
 def get_computer_move_easy(board, computer, _player):
+    # Win if possible, otherwise random
     for i in get_available(board):
         board[i] = computer
         if check_winner(board, computer):
@@ -198,70 +211,143 @@ def choose_difficulty():
             return 2
 
 
-def play():
+def choose_marker():
+    print(f"\n  {Color.BOLD}{Color.WHITE}Choose Your Marker:{Color.RESET}")
+    print(f"  {Color.GREEN}[X]{Color.RESET} Play as X {Color.DIM}(goes first){Color.RESET}")
+    print(f"  {Color.RED}[O]{Color.RESET} Play as O {Color.DIM}(goes second){Color.RESET}")
+    print()
+    while True:
+        try:
+            choice = input(f"  {Color.CYAN}➤ {Color.WHITE}Choose (X/O): {Color.RESET}").upper()
+            if choice in ("X", "O"):
+                return choice
+            print(f"  {Color.RED}✗ Enter X or O.{Color.RESET}")
+        except EOFError:
+            return "X"
+
+
+def choose_mode():
+    print(f"\n  {Color.BOLD}{Color.WHITE}Game Mode:{Color.RESET}")
+    print(f"  {Color.GREEN}[1]{Color.RESET} Player vs Computer")
+    print(f"  {Color.MAGENTA}[2]{Color.RESET} Player vs Player")
+    print()
+    while True:
+        try:
+            choice = input(f"  {Color.CYAN}➤ {Color.WHITE}Choose (1/2): {Color.RESET}")
+            if choice in ("1", "2"):
+                return int(choice)
+            print(f"  {Color.RED}✗ Enter 1 or 2.{Color.RESET}")
+        except EOFError:
+            return 1
+
+
+# ─────────────────────── GAME LOOP ───────────────────
+
+def play(scores):
     clear_screen()
     print(BANNER)
+    print_scoreboard(scores)
 
-    difficulty = choose_difficulty()
-    ai_move_fn = {1: get_computer_move_easy, 2: get_computer_move_medium, 3: get_computer_move_hard}[difficulty]
-    diff_label = {1: f"{Color.GREEN}Easy", 2: f"{Color.YELLOW}Medium", 3: f"{Color.RED}Hard"}[difficulty]
+    mode = choose_mode()
+    player_marker = choose_marker()
+
+    if mode == 1:
+        difficulty = choose_difficulty()
+        ai_move_fn = {1: get_computer_move_easy, 2: get_computer_move_medium, 3: get_computer_move_hard}[difficulty]
+        diff_label = {1: f"{Color.GREEN}Easy", 2: f"{Color.YELLOW}Medium", 3: f"{Color.RED}Hard"}[difficulty]
+    else:
+        difficulty = None
+        ai_move_fn = None
+        diff_label = None
+
+    if mode == 1:
+        computer_marker = "O" if player_marker == "X" else "X"
+    else:
+        computer_marker = None
 
     board = [str(i + 1) for i in range(9)]
-    player, computer = "X", "O"
     current = "X"
+    move_count = 0
 
     clear_screen()
     print(BANNER)
-    print(f"  {Color.BOLD}You: {Color.GREEN}X{Color.RESET}  │  "
-          f"{Color.BOLD}Computer: {Color.RED}O{Color.RESET}  │  "
-          f"{Color.BOLD}Difficulty: {diff_label}{Color.RESET}")
+    print_scoreboard(scores)
+
+    if mode == 1:
+        print(f"  {Color.BOLD}You: {Color.GREEN}{player_marker}{Color.RESET}  │  "
+              f"{Color.BOLD}Computer: {Color.RED}{computer_marker}{Color.RESET}  │  "
+              f"{Color.BOLD}Difficulty: {diff_label}{Color.RESET}")
+    else:
+        other = "O" if player_marker == "X" else "X"
+        print(f"  {Color.BOLD}Player 1: {Color.GREEN}{player_marker}{Color.RESET}  │  "
+              f"{Color.BOLD}Player 2: {Color.MAGENTA}{other}{Color.RESET}")
 
     while True:
-        if current == player:
+        is_player_turn = (mode == 2) or (current == player_marker)
+
+        if is_player_turn:
             print_board(board)
+            if mode == 2:
+                label = "Player 1" if current == player_marker else "Player 2"
+                print(f"  {Color.BOLD}{label}'s turn ({current}){Color.RESET}")
             move = get_player_move(board)
-            board[move] = player
+            board[move] = current
         else:
             thinking_animation()
-            move = ai_move_fn(board, computer, player)
-            board[move] = computer
-            print(f"  {Color.YELLOW}● Computer placed O at position {move + 1}{Color.RESET}")
+            move = ai_move_fn(board, computer_marker, player_marker)
+            board[move] = computer_marker
+            print(f"  {Color.YELLOW}● Computer placed {computer_marker} at position {move + 1}{Color.RESET}")
 
-        winner = current if current == player else computer
-        win_combo = check_winner(board, winner)
+        move_count += 1
+
+        win_combo = check_winner(board, current if is_player_turn else computer_marker)
         if win_combo:
             clear_screen()
             print(BANNER)
             print_board(board, winning_cells=win_combo)
-            if winner == player:
+
+            if mode == 2:
+                label = "Player 1" if current == player_marker else "Player 2"
+                animated_text(f"  🎉 {label} ({current}) wins!", 0.04)
+                scores["player"] += 1
+            elif is_player_turn:
                 animated_text(f"  {Color.GREEN}{Color.BOLD}🎉 Congratulations! You win!{Color.RESET}", 0.04)
+                scores["player"] += 1
             else:
                 animated_text(f"  {Color.RED}{Color.BOLD}💀 Computer wins! Better luck next time.{Color.RESET}", 0.04)
+                scores["computer"] += 1
             break
+
         if is_draw(board):
             clear_screen()
             print(BANNER)
             print_board(board)
             animated_text(f"  {Color.YELLOW}{Color.BOLD}🤝 It's a draw!{Color.RESET}", 0.04)
+            scores["draws"] += 1
             break
 
-        if current == player:
+        if mode == 1 and is_player_turn:
             clear_screen()
             print(BANNER)
-            print(f"  {Color.BOLD}You: {Color.GREEN}X{Color.RESET}  │  "
-                  f"{Color.BOLD}Computer: {Color.RED}O{Color.RESET}  │  "
-                  f"{Color.BOLD}Difficulty: {diff_label}{Color.RESET}")
+            print_scoreboard(scores)
+            if mode == 1:
+                print(f"  {Color.BOLD}You: {Color.GREEN}{player_marker}{Color.RESET}  │  "
+                      f"{Color.BOLD}Computer: {Color.RED}{computer_marker}{Color.RESET}  │  "
+                      f"{Color.BOLD}Difficulty: {diff_label}{Color.RESET}")
 
         current = "O" if current == "X" else "X"
 
+    print_scoreboard(scores)
 
-if __name__ == "__main__":
+
+def main():
+    scores = {"player": 0, "computer": 0, "draws": 0}
     clear_screen()
     print(BANNER)
     animated_text(f"  {Color.WHITE}{Color.BOLD}Welcome to Tic Tac Toe!{Color.RESET}", 0.04)
 
     while True:
-        play()
+        play(scores)
         print()
         try:
             again = input(f"  {Color.CYAN}➤ {Color.WHITE}Play again? (y/n): {Color.RESET}").lower()
@@ -272,3 +358,7 @@ if __name__ == "__main__":
             animated_text(f"  {Color.CYAN}{Color.BOLD}Thanks for playing! See you next time! 👋{Color.RESET}", 0.03)
             print()
             break
+
+
+if __name__ == "__main__":
+    main()
